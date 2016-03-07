@@ -10,7 +10,7 @@ import matplotlib.pylab as plt
 class Mstar(object):
 
     def __init__(self, z, mode='high'):
-        self.d = genfromtxt("/home/morpheus/gabbo/rsf_msmh3.txt")
+        self.d = genfromtxt("rsf_msmh3.txt")
         self.z = z
         self.mode = mode
 
