@@ -65,7 +65,7 @@ def Mstar_vU(mhalo, mode='def', no_scatter=False):
 
 def plot_angular_momentum_size_velocity():
 
-    size = 500000
+    size = 50000
     # Planck parameters
     h, Om, OL = 0.677, 0.31, 0.69
 
@@ -77,7 +77,7 @@ def plot_angular_momentum_size_velocity():
     mhf = genfromtxt('mVector_PLANCK-SMT_10.5-13.txt')
     # mhalo = array(choice(mhf[:, 0], p=mhf[:, 8]/sum(mhf[:, 8]), size=size), dtype=float32)
 
-    '''
+
     Ms = Mstar(0., mode='low')
     mstar = []
 
@@ -87,10 +87,29 @@ def plot_angular_momentum_size_velocity():
     mstar = array(mstar)
     '''
     mstar = Mstar_vU(mhalo, mode='FR')
+    '''
 
     # ms_lowlim = 9.
     # mhalo = mhalo[log10(array(mstar)) > ms_lowlim]
     # mstar = mstar[log10(array(mstar)) > ms_lowlim]
+
+    # Bulge-fraction distribution
+    btf = genfromtxt('bt_distr_mstar.txt')
+
+    bt = []
+    for m in mstar:
+        if log10(m) <= 9.5:
+            bt.append(choice(btf[:, 0], p=btf[:, 2]/sum(btf[:, 2]), size=1)[0])
+        if (log10(m) > 9.5) & (log10(m) <= 10.):
+            bt.append(choice(btf[:, 0], p=btf[:, 3]/sum(btf[:, 3]), size=1)[0])
+        if (log10(m) > 10.) & (log10(m) <= 10.5):
+            bt.append(choice(btf[:, 0], p=btf[:, 4]/sum(btf[:, 4]), size=1)[0])
+        if (log10(m) > 10.5) & (log10(m) <= 11.):
+            bt.append(choice(btf[:, 0], p=btf[:, 5]/sum(btf[:, 5]), size=1)[0])
+        if log10(m) > 11.:
+            bt.append(choice(btf[:, 0], p=btf[:, 6]/sum(btf[:, 6]), size=1)[0])
+
+    bt = array(bt)
 
     # DM halo spin parameter distribution
     # from Maccio', Dutton & van den Bosch (2008)
