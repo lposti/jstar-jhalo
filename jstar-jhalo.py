@@ -33,6 +33,7 @@ class Mstar(object):
         # adding systematic scatter 0.2dex
         return 10. ** normal(log10(Ms_med), 0.25, 1)[0]
 
+
 def Mstar_vU(mhalo, mode='def', no_scatter=False):
 
     if mode == 'def':
