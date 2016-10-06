@@ -220,7 +220,6 @@ def plot_angular_momentum_size_velocity():
 
     mstar = Mstar_vU(mhalo, mode='TF')
 
-
     ms_lowlim, ms_highlim = 7., 11.75
     mhalo = mhalo[(log10(array(mstar)) > ms_lowlim) & (log10(array(mstar)) < ms_highlim)]
     mstar = mstar[(log10(array(mstar)) > ms_lowlim) & (log10(array(mstar)) < ms_highlim)]
