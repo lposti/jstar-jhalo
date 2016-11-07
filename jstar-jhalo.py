@@ -1,15 +1,18 @@
-__author__ = 'morpheus'
+__author__ = 'lposti'
 
 from math import pi
 from numpy import genfromtxt, power, log10, array, searchsorted, arange, interp, linspace,\
     asarray, log, exp, histogram2d, float32, percentile, sqrt, logspace, median, std, mean, append,\
-    cumsum, sort, argmin
+    cumsum, sort, argmin, full_like
 from numpy import abs as npabs
 from numpy.random import normal, uniform, choice
 from warnings import simplefilter, catch_warnings
 import matplotlib.pylab as plt
 from matplotlib.cm import get_cmap
 import h5py
+from vrot_vc import vrot_vc_P12
+from hmf.sample import sample_mf
+from hmf.fitting_functions import Tinker10
 
 
 class Mstar(object):
@@ -76,7 +79,8 @@ def Mstar_vU(mhalo, mode='def', no_scatter=False):
 
     if mode == 'def':
         # default
-        mh1, ms0, b1, b2 = 10.**12.06, 10.**11.16, 5.4, 0.15
+        # mh1, ms0, b1, b2 = 10.**12.06, 10.**11.16, 5.4, 0.15
+        mh1, ms0, b1, b2 = 10.**12.5, 10.**11.15, 1.75, 0.25
     elif mode == 'TF':
         # stellar Tully-Fisher
         # mh1, ms0, b1, b2 = 10.**12.3, 10.**11.5, 2., 0.6
@@ -91,7 +95,8 @@ def Mstar_vU(mhalo, mode='def', no_scatter=False):
     if no_scatter:
         s = 0.001
     else:
-        s = 0.14
+        # s = 0.14
+        s = 0.2
     mhalo = asarray(mhalo)
     if mhalo[mhalo < 1e4] is []:
         mhalo = 10. ** mhalo
@@ -103,9 +108,27 @@ def Mstar_vU(mhalo, mode='def', no_scatter=False):
     return array(ms)
 
 
+def get_bt_distribution_none(mstar):
+    """
+        Returns -1 for all galaxies
+    """
+    return full_like(mstar, -1.)
+
+
 def get_bt_distribution_from_SDSS(mstar):
     # Bulge-fraction distribution
-    btf = genfromtxt('bt_distr_mstar.txt')
+    btf = genfromtxt('bt_distr_mstarOLD.txt')
+
+    # for i in range(2, 9):
+    #     btf[40:, i] /= 10.
+    for i in range(2, 6):
+        for k in range(40, 50):
+            bth = btf[k, 0]
+            btf[k, i] /= ((bth-0.8)/0.2 * 8.) + 1.
+    for i in range(2, 10):
+        for k in range(0, 10):
+            bth = btf[k, 0]
+            btf[k, i] *= (-(bth-0.2)/0.2 * 2.) + 1.
 
     bt = []
     for m in mstar:
@@ -195,32 +218,34 @@ def get_bt_distribution_from_lambda(mstar, mhalo, lambda_halo):
 
 def plot_angular_momentum_size_velocity():
 
-    size = 100000
+    size = 500000
     # Planck parameters
     h, Om, OL = 0.677, 0.31, 0.69
 
     # uniform halo mass function
-    mhalo = array(10. ** uniform(10.75, 14.5, size), dtype=float32)
+    # mhalo = array(10. ** uniform(10., 13.5, size), dtype=float32)
 
     # read halo mass-function
     # mhf = genfromtxt('mVector_PLANCK-SMT_11-13.txt')
     # mhf = genfromtxt('mVector_PLANCK-SMT_10.5-13.txt')
-    mhf = genfromtxt('mVector_PLANCK-SMT_11-14.5.txt')
+    # mhf = genfromtxt('mVector_PLANCK-SMT_11-14.5.txt')
     # mhalo = array(choice(mhf[:, 0], p=mhf[:, 5]/sum(mhf[:, 5]), size=size), dtype=float32)
 
-    '''
-    Ms = Mstar(0., mode='low', model='B10')
+    mhalo, _ = sample_mf(size, 11., Mmax=15.5, hmf_model=Tinker10)
+
+
+    Ms = Mstar(0., mode='high', model='L12')
     mstar = []
 
-    print "generating mstar..."
+    print("generating mstar...")
     for m in mhalo:
         mstar.append(Ms(m))
     mstar = array(mstar)
-    '''
 
-    mstar = Mstar_vU(mhalo, mode='TF')
 
-    ms_lowlim, ms_highlim = 7., 11.75
+    # mstar = Mstar_vU(mhalo, mode='def')
+
+    ms_lowlim, ms_highlim = 7., 12.# 11.75
     mhalo = mhalo[(log10(array(mstar)) > ms_lowlim) & (log10(array(mstar)) < ms_highlim)]
     mstar = mstar[(log10(array(mstar)) > ms_lowlim) & (log10(array(mstar)) < ms_highlim)]
 
@@ -228,8 +253,9 @@ def plot_angular_momentum_size_velocity():
     # from Maccio', Dutton & van den Bosch (2008)
     lambda_halo = 10. ** normal(-1.466, 0.253, len(mhalo))
 
-    # bt = get_bt_distribution_from_SDSS(mstar)
-    bt = get_bt_distribution_from_meert14(mstar)
+    # bt = get_bt_distribution_none(mstar)
+    bt = get_bt_distribution_from_SDSS(mstar)
+    # bt = get_bt_distribution_from_meert14(mstar)
     # bt, mstar, mhalo, lambda_halo = get_bt_distribution_from_lambda(mstar, mhalo, lambda_halo)
 
     # Dutton & Maccio' (2014)
@@ -239,7 +265,7 @@ def plot_angular_momentum_size_velocity():
     a = 0.537 + (1.025 - 0.537) * exp(-0.718 * array([0., 1.]) ** 1.08)
     # scatter 0.11dex
     cvir = []
-    print "generating concentrations..."
+    print ("generating concentrations...")
     for m in mhalo:
         cvir.append(10. ** normal(a[0] + b[0] * log10(m / (1e12 / h)), 0.11, 1)[0])
     cvir = array(cvir)
@@ -253,7 +279,10 @@ def plot_angular_momentum_size_velocity():
     Delta_c = lambda z: 18. * pi**2 + 82. * (Oz(z) - 1.) - 39. * (Oz(z) - 1.)**2
     rho_hat = 4. / 3. * pi * Delta_c(0.) * rho_c
 
+    # 0.6 factor to account for different normalization in SHMR
     vc = sqrt(G * f(2.15) / f(cvir) * cvir / 2.15 * pow(rho_hat, 1./3.)) * power(mhalo / h, 1./3.)
+    for i in range(len(vc)):
+        vc[i] *= .675*vrot_vc_P12(vc[i])
 
     # print "%e %e" % (f(10.) * 2.15 / (f(2.15) * 10.), sqrt(2. * f(10.) * 2.15 / (f(2.15) * 10.)))
 
@@ -273,8 +302,11 @@ def plot_angular_momentum_size_velocity():
     # j_halo da Romanowsky & Fall (2012) eq. (14)
     # j_halo = 4.23e4 * lambda_halo * power(mhalo / 1e12, 2./3.)
 
+    """
+    ------------- Definition of B/T cuts
+    """
     # bt_discs, bt_spirals, bt_ltg, bt_lents, bt_ells = 0.1, 0.2, 0.5, 0.8, 0.95
-    bt_discs, bt_spirals, bt_ltg, bt_lents, bt_ells = 0.2, 0.4, 0.5, 0.65, 0.8
+    bt_discs, bt_spirals, bt_ltg, bt_lents, bt_ells = 0.1, 0.25, 0.5, 0.65, 0.8
     # fj(Mhalo)
     def jstar_FR(mass, bf):
         if (bf >= 0.) & (bf <= bt_discs):
@@ -295,8 +327,10 @@ def plot_angular_momentum_size_velocity():
         elif (bf > bt_ells) & (bf <= 1.):
             # sE
             j0, alpha, s = 2.73, 0.6, 0.2
+        elif bf == -1:
+            j0, alpha, s = 3. , 0.6, 0.22
         else:
-            print bf
+            print (bf)
             raise ValueError("Problem in bt not in ]0,1]")
 
         return 10. ** normal(j0+alpha*(mass-11.), s, 1)[0]
@@ -309,7 +343,7 @@ def plot_angular_momentum_size_velocity():
     fb_func = lambda fb: 1. + (jb_over_jd_fit(fb) - 1.) * fb
 
     jstar, jdisc, jbulge = [], [], []
-    print "generating jstar..."
+    print ("generating jstar...")
     for i in range(len(mstar)):
         jstar.append(jstar_FR(log10(mstar[i]), bt[i]))
         jdisc.append(jstar[i] / fb_func(bt[i]))
@@ -324,11 +358,13 @@ def plot_angular_momentum_size_velocity():
     sstar_FJ = lambda t: 10.**(2.054 + 0.286 * asarray(t-10.))
     Mstar_FJ = lambda t: 10.**(-2.054/0.286 + 10. + 1./0.286 * asarray(t))
 
+    factor = 1.1  # V_circ(R_50) := factor * sigma(R_50)
+
     # Re = jdisc / (vstar_TF(log10(mstar)))
     # Re[bt > 0.8] = jbulge[bt > 0.8] / (0.7 * vstar_TF(log10(mstar[bt > 0.8])))
     # Re[bt > 0.8] = jbulge[bt > 0.8] / (10.**(-1.06 + 0.32*log10(mstar[bt > 0.8])))
     Re = jstar / vc  # vstar_TF(log10(mstar))
-    # Re[bt > bt_ltg] = jstar[bt > bt_ltg] / (1.65 * sstar_FJ(log10(mstar[bt > bt_ltg])))
+    Re[bt > bt_ells] = jstar[bt > bt_ells] / (vc[bt > bt_ells] / factor)  # sstar_FJ(log10(mstar[bt > bt_ltg])))
 
     # Mo, Mao & White (1998)
     # lambda_halo_prime = lambda_halo * jdisc / j_halo  # fj
@@ -393,7 +429,10 @@ def plot_angular_momentum_size_velocity():
     ax.set_ylim([8, 11.75])
     ax.set_xlim([10.75, 13.5])
 
-    x, y, H, lev, _, _, _ = bins_and_hist(mhalo, mstar, bt > 0, 30, sigs)
+    if len(bt[bt<0])>0:
+        x, y, H, lev, _, _, _ = bins_and_hist(mhalo/h, mstar/h**2, bt<0, 30, sigs)
+    else:
+        x, y, H, lev, _, _, _ = bins_and_hist(mhalo/h, mstar/h**2, bt > 0, 30, sigs)
     # plt.plot(log10(d10_msmh_ltg(d10_ms_ltg) * d10_ms_ltg), log10(d10_ms_ltg), 'b-')
     # plt.plot(log10(d10_msmh_etg(d10_ms_etg) * d10_ms_etg), log10(d10_ms_etg), 'r-')
     plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Greys'), alpha=0.75)
@@ -405,7 +444,10 @@ def plot_angular_momentum_size_velocity():
     ax2.set_xlim([10.75, 13.5])
     fig.subplots_adjust(hspace=0)
 
-    x, y, H, lev, _, _, _ = bins_and_hist(mhalo, mstar/mhalo, bt > 0, 30, sigs)
+    if len(bt[bt<0])>0:
+        x, y, H, lev, _, _, _ = bins_and_hist(mhalo, mstar/mhalo, bt<0, 30, sigs)
+    else:
+        x, y, H, lev, _, _, _ = bins_and_hist(mhalo, mstar/mhalo, bt > 0, 30, sigs)
     plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Greys'), alpha=0.75)
 
     if save_plots:
@@ -418,7 +460,10 @@ def plot_angular_momentum_size_velocity():
     plt.xlabel(r"$\log\rm\,M_h/M_\odot$", fontsize=16)
     plt.ylabel(r"$\log\rm\lambda_{halo}$", fontsize=16)
     plt.plot(log10(mhalo), log10(lambda_halo), 'b.', alpha=0.0025)
-    x, y, H, lev, _, _, _ = bins_and_hist(mhalo, lambda_halo, bt > 0,  size_hist, sigs)
+    if len(bt[bt<0])>0:
+        x, y, H, lev, _, _, _ = bins_and_hist(mhalo, lambda_halo, bt<0,  size_hist, sigs)
+    else:
+        x, y, H, lev, _, _, _ = bins_and_hist(mhalo, lambda_halo, bt > 0,  size_hist, sigs)
     plt.contour(x, y, log10(H).T, levels=lev, colors='#151AB0')
 
 
@@ -429,7 +474,10 @@ def plot_angular_momentum_size_velocity():
     ax = fig.add_subplot(111)
     plt.xlabel(r"$\log\rm\,M_h/M_\odot$", fontsize=16)
     plt.ylabel(r"$\log\rm\,j_h/km\,s^{-1}\,kpc$", fontsize=16)
-    x, y, H, lev, _, _, _ = bins_and_hist(mhalo, j_halo, bt > 0, size_hist, sigs)
+    if len(bt[bt<0])>0:
+        x, y, H, lev, _, _, _ = bins_and_hist(mhalo, j_halo, bt<0, size_hist, sigs)
+    else:
+        x, y, H, lev, _, _, _ = bins_and_hist(mhalo, j_halo, bt > 0, size_hist, sigs)
     # ax.contour(x, y, log10(H).T, levels=lev, colors='#151AB0')
     ax.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Greys'), alpha=0.75)
 
@@ -452,39 +500,54 @@ def plot_angular_momentum_size_velocity():
     plt.xlabel(r"$\log\rm\,M_h/M_\odot$", fontsize=16)
     plt.ylabel(r"$\log\rm\,f_j(M_h)\equiv j_\ast / j_h$", fontsize=16)
     ax = fig.add_subplot(111)
-    ax.text(0.1, 0.9, r"$\rm Sc-Sb$", fontsize=18, color='#151AB0', transform=ax.transAxes)
-    ax.text(0.1, 0.85, r"$\rm Sa-S0$", fontsize=18, color='#009603', transform=ax.transAxes)
-    ax.text(0.1, 0.8, r"$\rm Es$", fontsize=18, color='#BD000D', transform=ax.transAxes)
 
-    # spirals
-    w = bt < bt_spirals
-    # plt.plot(log10(mhalo[w]), log10(fj[w]), 'b.', alpha=0.0025)
-    x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, w, size_hist, sigs)
-    # plt.errorbar(log10(mhalo_bin), log10(fj_bin), yerr=abs(log10(fj_bin)-log10(e_fj_bin)), c='b', fmt='o')
-    # plt.contour(x, y, log10(H).T, levels=lev, colors='#151AB0')
-    plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Blues'), alpha=0.75)
+    if len(bt[bt<0])>0:
+        x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, bt<0, size_hist, sigs)
+        plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Greys'), alpha=0.75)
 
-    # Sa and lenticulars
-    w = (bt >= bt_spirals) & (bt < bt_lents)
-    # plt.plot(log10(mhalo[w]), log10(fj[w]), 'b.', alpha=0.0025)
-    x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, w, size_hist, sigs)
-    # plt.errorbar(log10(mhalo_bin), log10(fj_bin), yerr=abs(log10(fj_bin)-log10(e_fj_bin)), c='g', fmt='o')
-    # plt.contour(x, y, log10(H).T, levels=lev, colors='#AB9700')
-    plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Greens'), alpha=0.75)
+        # ------ Median relation
+        x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, bt<0, size_hist, sigs, bin_size=30)
+        # plt.errorbar(log10(mhalo_bin), log10(fj_bin), yerr=abs(log10(fj_bin)-log10(e_fj_bin)), c='k', fmt='o')
+    else:
+        ax.text(0.1, 0.9, r"$\rm Sc-Sb$", fontsize=18, color='#151AB0', transform=ax.transAxes)
+        # ax.text(0.1, 0.85, r"$\rm Sa-S0$", fontsize=18, color='#009603', transform=ax.transAxes)
+        ax.text(0.1, 0.8, r"$\rm Es$", fontsize=18, color='#BD000D', transform=ax.transAxes)
 
+        # spirals
+        w = bt < bt_spirals
+        # plt.plot(log10(mhalo[w]), log10(fj[w]), 'b.', alpha=0.0025)
+        x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, w, size_hist, sigs)
+        # plt.errorbar(log10(mhalo_bin), log10(fj_bin), yerr=abs(log10(fj_bin)-log10(e_fj_bin)), c='b', fmt='o')
+        # plt.contour(x, y, log10(H).T, levels=lev, colors='#151AB0')
+        plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Blues'), alpha=0.75)
 
-    # ellipticals
-    w = bt > bt_lents
-    # plt.plot(log10(mhalo[w]), log10(fj[w]), 'r.', alpha=0.0025)
-    x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, w, size_hist, sigs)
-    # plt.errorbar(log10(mhalo_bin), log10(fj_bin), yerr=abs(log10(fj_bin)-log10(e_fj_bin)), c='r', fmt='o')
-    # plt.contour(x, y, log10(H).T, levels=lev, colors='#BD000D')
-    plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Reds'), alpha=0.75)
-    plt.xlim([10.7, 13.5])
+        '''
+        # Sa and lenticulars
+        w = (bt >= bt_spirals) & (bt < bt_ells)
+        # plt.plot(log10(mhalo[w]), log10(fj[w]), 'b.', alpha=0.0025)
+        x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, w, size_hist, sigs)
+        # plt.errorbar(log10(mhalo_bin), log10(fj_bin), yerr=abs(log10(fj_bin)-log10(e_fj_bin)), c='g', fmt='o')
+        # plt.contour(x, y, log10(H).T, levels=lev, colors='#AB9700')
+        plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Greens'), alpha=0.75)
+        '''
 
-    # ------ Median relation
-    x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, bt > 0, size_hist, sigs, bin_size=30)
-    plt.errorbar(log10(mhalo_bin), log10(fj_bin), yerr=abs(log10(fj_bin)-log10(e_fj_bin)), c='k', fmt='o')
+        # ellipticals
+        w = bt > bt_ells
+        # plt.plot(log10(mhalo[w]), log10(fj[w]), 'r.', alpha=0.0025)
+        x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, w, size_hist, sigs)
+        # plt.errorbar(log10(mhalo_bin), log10(fj_bin), yerr=abs(log10(fj_bin)-log10(e_fj_bin)), c='r', fmt='o')
+        # plt.contour(x, y, log10(H).T, levels=lev, colors='#BD000D')
+        plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Reds'), alpha=0.75)
+        plt.xlim([10.7, 13.5])
+
+        # ------ Median relation
+        # x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, bt > 0, size_hist, sigs, bin_size=30)
+        x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, (bt < bt_spirals), size_hist, sigs, bin_size=30)
+        # plt.errorbar(log10(mhalo_bin), log10(fj_bin), yerr=abs(log10(fj_bin)-log10(e_fj_bin)), c='b', fmt='o')
+        plt.plot(log10(mhalo_bin)[:8], log10(fj_bin)[:8], 'bo-')
+        x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, (bt > bt_ells), size_hist, sigs, bin_size=30)
+        # plt.errorbar(log10(mhalo_bin), log10(fj_bin), yerr=abs(log10(fj_bin)-log10(e_fj_bin)), c='r', fmt='s')
+        plt.plot(log10(mhalo_bin)[2:], log10(fj_bin)[2:], 'rs-')
 
     if save_plots:
         plt.savefig('fj-Mh_all_ref.pdf', bbox_inches='tight')
@@ -501,37 +564,47 @@ def plot_angular_momentum_size_velocity():
     ax.text(0.1, 0.8, r"$\rm Es$", fontsize=18, color='#BD000D', transform=ax.transAxes)
     # ax.text(0.4, 0.15, r"$\rm Kravtsov Plot$", fontsize=20, transform=ax.transAxes)
 
-    # spirals
-    w = bt < bt_spirals
-    # plt.plot(log10(r200)[w], log10(Re)[w], 'b.', alpha=0.0075)
-    x, y, H, lev, _, _, _ = bins_and_hist(r200, Re, w, size_hist, sigs)
-    # plt.contour(x, y, log10(H).T, levels=lev, colors='#151AB0')
-    plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Blues'), alpha=0.75)
+    if len(bt[bt<0])>0:
+        x, y, H, lev, _, _, _ = bins_and_hist(r200, Re, bt<0, size_hist, sigs)
+        plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Greys'), alpha=0.75)
 
+        # ------ Median relation
+        x, y, H, lev, r200_bin, Rd_bin, e_Rd_bin = bins_and_hist(r200, Re, bt<0, size_hist, sigs, bin_size=30)
+        plt.errorbar(log10(r200_bin), log10(Rd_bin), yerr=abs(log10(Rd_bin)-log10(e_Rd_bin)), c='k', fmt='o')
+    else:
+        # spirals
+        w = bt < bt_spirals
+        # plt.plot(log10(r200)[w], log10(Re)[w], 'b.', alpha=0.0075)
+        x, y, H, lev, _, _, _ = bins_and_hist(r200, Re, w, size_hist, sigs)
+        # plt.contour(x, y, log10(H).T, levels=lev, colors='#151AB0')
+        plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Blues'), alpha=0.75)
 
-    # Sa and lenticulars
-    w = (bt >= bt_spirals) & (bt < bt_lents)
-    # plt.plot(log10(r200)[w], log10(Re)[w], 'b.', alpha=0.0075)
-    x, y, H, lev, _, _, _ = bins_and_hist(r200, Re, w, size_hist, sigs)
-    # plt.contour(x, y, log10(H).T, levels=lev, colors='#AB9700')
-    plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Greens'), alpha=0.75)
+        '''
+        # Sa and lenticulars
+        w = (bt >= bt_spirals) & (bt < bt_ells)
+        # plt.plot(log10(r200)[w], log10(Re)[w], 'b.', alpha=0.0075)
+        x, y, H, lev, _, _, _ = bins_and_hist(r200, Re, w, size_hist, sigs)
+        # plt.contour(x, y, log10(H).T, levels=lev, colors='#AB9700')
+        plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Greens'), alpha=0.75)
+        '''
 
+        # ellipticals
+        w = bt > bt_ells
+        # plt.plot(log10(r200)[w], log10(Re)[w], 'r.', alpha=0.0075)
+        x, y, H, lev, _, _, _ = bins_and_hist(r200, Re, w, size_hist, sigs)
+        # plt.contour(x, y, log10(H).T, levels=lev, colors='#BD000D')
+        plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Reds'), alpha=0.75)
 
-    # ellipticals
-    w = bt > bt_lents
-    # plt.plot(log10(r200)[w], log10(Re)[w], 'r.', alpha=0.0075)
-    x, y, H, lev, _, _, _ = bins_and_hist(r200, Re, w, size_hist, sigs)
-    # plt.contour(x, y, log10(H).T, levels=lev, colors='#BD000D')
-    plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Reds'), alpha=0.75)
+        # ----- Median relation
+        # x, y, H, lev, r200_bin, Rd_bin, e_Rd_bin = bins_and_hist(r200, Re, bt > 0, size_hist, sigs, bin_size=30)
+        x, y, H, lev, r200_bin, Rd_bin, e_Rd_bin = bins_and_hist(r200, Re, (bt < bt_spirals) | (bt > bt_ells), size_hist, sigs, bin_size=30)
+        plt.errorbar(log10(r200_bin), log10(Rd_bin), yerr=abs(log10(Rd_bin)-log10(e_Rd_bin)), c='k', fmt='o')
+
 
     plt.plot(log10(linspace(110, 800)), log10(0.015 * linspace(110, 800)), 'k-', lw=2)
     plt.plot(log10(linspace(110, 800)), log10(0.015 * linspace(110, 800))+0.5, 'k--', lw=2)
     plt.plot(log10(linspace(110, 800)), log10(0.015 * linspace(110, 800))-0.5, 'k--', lw=2)
     plt.xlim([log10(110.), log10(800.)])
-
-    # ----- Median relation
-    x, y, H, lev, r200_bin, Rd_bin, e_Rd_bin = bins_and_hist(r200, Re, bt > 0, size_hist, sigs, bin_size=30)
-    plt.errorbar(log10(r200_bin), log10(Rd_bin), yerr=abs(log10(Rd_bin)-log10(e_Rd_bin)), c='k', fmt='o')
 
     if save_plots:
         plt.savefig('Re-r200_all_ref.pdf', bbox_inches='tight')
@@ -547,27 +620,36 @@ def plot_angular_momentum_size_velocity():
     ax.text(0.1, 0.85, r"$\rm Sa-S0$", fontsize=18, color='#009603', transform=ax.transAxes)
     # ax.text(0.4, 0.15, r"$\rm Mo, Mao & White Plot$", fontsize=20, transform=ax.transAxes)
 
-    # spirals
-    w = bt < bt_spirals
-    # plt.plot(log10(r200[w]), log10(Rd[w]), 'b.', alpha=0.01)
-    x, y, H, lev, r200_bin, Rd_bin, e_Rd_bin = bins_and_hist(r200, Rd, w, size_hist, sigs)
-    # plt.errorbar(log10(r200_bin), log10(Rd_bin), yerr=abs(log10(Rd_bin)-log10(e_Rd_bin)), c='b', fmt='o')
-    # plt.contour(x, y, log10(H).T, levels=lev, colors='#151AB0')
-    plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Blues'), alpha=0.75)
+    if len(bt[bt<0])>0:
+        x, y, H, lev, r200_bin, Rd_bin, e_Rd_bin = bins_and_hist(r200, Rd, bt<0, size_hist, sigs)
+        plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Greys'), alpha=0.75)
+
+        # ------ Median relation
+        x, y, H, lev, r200_bin, Rd_bin, e_Rd_bin = bins_and_hist(r200, Rd, bt<0, size_hist, sigs, bin_size=30)
+        plt.errorbar(log10(r200_bin), log10(Rd_bin), yerr=abs(log10(Rd_bin)-log10(e_Rd_bin)), c='k', fmt='o')
+    else:
+        # spirals
+        w = bt < bt_spirals
+        # plt.plot(log10(r200[w]), log10(Rd[w]), 'b.', alpha=0.01)
+        x, y, H, lev, r200_bin, Rd_bin, e_Rd_bin = bins_and_hist(r200, Rd, w, size_hist, sigs)
+        # plt.errorbar(log10(r200_bin), log10(Rd_bin), yerr=abs(log10(Rd_bin)-log10(e_Rd_bin)), c='b', fmt='o')
+        # plt.contour(x, y, log10(H).T, levels=lev, colors='#151AB0')
+        plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Blues'), alpha=0.75)
 
 
-    # Sa and lenticulars
-    w = (bt >= bt_spirals) & (bt < bt_lents)
-    # plt.plot(log10(r200[w]), log10(Rd[w]), 'y.', alpha=0.01)
-    x, y, H, lev, r200_bin, Rd_bin, e_Rd_bin = bins_and_hist(r200, Rd, w, size_hist, sigs)
-    # plt.errorbar(log10(r200_bin), log10(Rd_bin), yerr=abs(log10(Rd_bin)-log10(e_Rd_bin)), c='g', fmt='o')
-    # plt.contour(x, y, log10(H).T, levels=lev, colors='#AB9700')
-    plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Greens'), alpha=0.75)
+        # Sa and lenticulars
+        w = (bt >= bt_spirals) & (bt < bt_lents)
+        # plt.plot(log10(r200[w]), log10(Rd[w]), 'y.', alpha=0.01)
+        x, y, H, lev, r200_bin, Rd_bin, e_Rd_bin = bins_and_hist(r200, Rd, w, size_hist, sigs)
+        # plt.errorbar(log10(r200_bin), log10(Rd_bin), yerr=abs(log10(Rd_bin)-log10(e_Rd_bin)), c='g', fmt='o')
+        # plt.contour(x, y, log10(H).T, levels=lev, colors='#AB9700')
+        plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Greens'), alpha=0.75)
+
+        x, y, H, lev, r200_bin, Rd_bin, e_Rd_bin = bins_and_hist(r200, Rd, bt < bt_lents, size_hist, sigs, bin_size=30)
+        plt.errorbar(log10(r200_bin), log10(Rd_bin), yerr=abs(log10(Rd_bin)-log10(e_Rd_bin)), c='k', fmt='o')
+
     plt.plot(log10(linspace(110, 800)), log10(0.0112*linspace(110, 800)), 'k-', lw=2)
     plt.xlim([log10(110.), log10(800.)])
-
-    x, y, H, lev, r200_bin, Rd_bin, e_Rd_bin = bins_and_hist(r200, Rd, bt < bt_lents, size_hist, sigs, bin_size=30)
-    plt.errorbar(log10(r200_bin), log10(Rd_bin), yerr=abs(log10(Rd_bin)-log10(e_Rd_bin)), c='k', fmt='o')
 
     if save_plots:
         plt.savefig('Rd-r200_ScS0_ref.pdf', bbox_inches='tight')
@@ -582,69 +664,80 @@ def plot_angular_momentum_size_velocity():
     ax = fig.add_subplot(111)
     ax.text(0.1, 0.9, r"$\rm Sc-Sb$", fontsize=18, color='#151AB0', transform=ax.transAxes)
 
-    # spirals
-    w = bt < bt_spirals
-    # plt.plot(log10(vc[w]), log10(mstar[w]), 'b.', alpha=0.0025)
-    x, y, H, lev, vc_bin, mstar_bin, e_mstar_bin = bins_and_hist(vc, mstar, w, size_hist, sigs)
-    # plt.errorbar(log10(vc_bin), log10(mstar_bin), yerr=abs(log10(mstar_bin)-log10(e_mstar_bin)), c='b', fmt='o')
-    plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Blues'))
+    if len(bt[bt<0])>0:
+        x, y, H, lev, vc_bin, mstar_bin, e_mstar_bin = bins_and_hist(vc, mstar, bt<0, size_hist, sigs)
+        plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Greys'), alpha=0.75)
+
+    else:
+        # spirals
+        w = bt < bt_spirals
+        # plt.plot(log10(vc[w]), log10(mstar[w]), 'b.', alpha=0.0025)
+        x, y, H, lev, vc_bin, mstar_bin, e_mstar_bin = bins_and_hist(vc, mstar, w, size_hist, sigs)
+        # plt.errorbar(log10(vc_bin), log10(mstar_bin), yerr=abs(log10(mstar_bin)-log10(e_mstar_bin)), c='b', fmt='o')
+        plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Blues'))
+
     plt.plot(linspace(1.9, 2.4), log10(Mstar_TF(linspace(1.9, 2.4))), 'k-', lw=3)
     plt.plot(linspace(1.9, 2.4), log10(Mstar_TF(linspace(1.9, 2.4)))+0.15, 'k--', lw=3)
     plt.plot(linspace(1.9, 2.4), log10(Mstar_TF(linspace(1.9, 2.4)))-0.15, 'k--', lw=3)
 
     if save_plots:
         plt.savefig('sTF_Sc_ref.pdf', bbox_inches='tight')
-    '''
-    ----------- Faber-Jackson
-    '''
-    fig = plt.figure()
-    plt.ylabel(r"$\log\rm\,M_\ast/M_\odot$", fontsize=16)
-    plt.xlabel(r"$\log\rm\,\sigma/km\,s^{-1}$", fontsize=16)
-    plt.ylim(9, 11.75)
-    ax = fig.add_subplot(111)
-    ax.text(0.1, 0.9, r"$\rm Es$", fontsize=18, color='#BD000D', transform=ax.transAxes)
 
-    factor = 1.1  # V_circ(R_50) := factor * sigma(R_50)
-    # ellipticals
-    w = bt > bt_lents
-    # turn vc to sigma for ellipticals
-    vc[w] /= factor
-    # Dutton et al. 2010 correction
-    # (vc[w])[log10(mstar[w]) > 10.5] *= 10.**(0.1-0.3*(log10(mstar[w])[log10(mstar[w]) > 10.5]-10.5))
-    # (vc[w])[log10(mstar[w]) <= 10.5] *= 10.**0.1
-    # plt.plot(log10(mstar[w]), log10(vc[w]), 'r.', alpha=0.0025)
-    x, y, H, lev, vc_bin, mstar_bin, e_mstar_bin = bins_and_hist(vc, mstar, w, size_hist, sigs)
-    # plt.errorbar(log10(vc_bin), log10(mstar_bin), yerr=abs(log10(mstar_bin)-log10(e_mstar_bin)), c='r', fmt='o')
-    plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Reds'))
-    plt.plot(linspace(1.8, 2.6), log10(Mstar_FJ(linspace(1.8, 2.6))), 'k-', lw=3)
-    plt.plot(linspace(1.8, 2.6), log10(Mstar_FJ(linspace(1.8, 2.6)))+0.1, 'k--', lw=3)
-    plt.plot(linspace(1.8, 2.6), log10(Mstar_FJ(linspace(1.8, 2.6)))-0.1, 'k--', lw=3)
 
-    if save_plots:
-        plt.savefig('FJ_Es_ref.pdf', bbox_inches='tight')
-    '''
-    ----------- FP
-    '''
-    fig = plt.figure()
-    plt.xlabel(r"$\log\rm\,M_\ast/kpc$", fontsize=16)
-    plt.ylabel(r"$\rm\,10.6+2\log\,\sigma/130\,km\,s^{-1}+\log\,R_e/2\,kpc$", fontsize=16)
-    plt.xlim(9, 11.75)
-    ax = fig.add_subplot(111)
-    ax.text(0.1, 0.825, r"$\rm Es$", fontsize=18, color='#BD000D', transform=ax.transAxes)
+    if len(bt[bt<0])>0:
+        pass
 
-    # etg
-    w = bt > bt_lents
-    # fp
-    fp = 10.6+2.*log10(vc[w]/factor/130.)+log10(Re[w]/2.)
-    x, y, H, lev, mstar_bin, fp_bin, e_fp_bin = bins_and_hist(mstar[w], 10.**fp, mstar[w] > 0, size_hist, sigs)
-    # plt.errorbar(log10(mstar_bin), fp_bin, yerr=0.5, c='r', fmt='o')
-    plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Reds'))
-    plt.plot(linspace(9, 12), linspace(9, 12), 'k-', lw=3)
-    plt.plot(linspace(9, 12), linspace(9, 12)+0.06, 'k--', lw=3)
-    plt.plot(linspace(9, 12), linspace(9, 12)-0.06, 'k--', lw=3)
+    else:
+        '''
+        ----------- Faber-Jackson
+        '''
+        fig = plt.figure()
+        plt.ylabel(r"$\log\rm\,M_\ast/M_\odot$", fontsize=16)
+        plt.xlabel(r"$\log\rm\,\sigma/km\,s^{-1}$", fontsize=16)
+        plt.ylim(9, 11.75)
+        ax = fig.add_subplot(111)
+        ax.text(0.1, 0.9, r"$\rm Es$", fontsize=18, color='#BD000D', transform=ax.transAxes)
 
-    if save_plots:
-        plt.savefig('FP_Es_ref.pdf', bbox_inches='tight')
+        # ellipticals
+        w = bt > bt_ells
+        # turn vc to sigma for ellipticals
+        vc[w] /= factor
+        # Dutton et al. 2010 correction
+        # (vc[w])[log10(mstar[w]) > 10.5] *= 10.**(0.1-0.3*(log10(mstar[w])[log10(mstar[w]) > 10.5]-10.5))
+        # (vc[w])[log10(mstar[w]) <= 10.5] *= 10.**0.1
+        # plt.plot(log10(mstar[w]), log10(vc[w]), 'r.', alpha=0.0025)
+        x, y, H, lev, vc_bin, mstar_bin, e_mstar_bin = bins_and_hist(vc, mstar, w, size_hist, sigs)
+        # plt.errorbar(log10(vc_bin), log10(mstar_bin), yerr=abs(log10(mstar_bin)-log10(e_mstar_bin)), c='r', fmt='o')
+        plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Reds'))
+        plt.plot(linspace(1.8, 2.6), log10(Mstar_FJ(linspace(1.8, 2.6))), 'k-', lw=3)
+        plt.plot(linspace(1.8, 2.6), log10(Mstar_FJ(linspace(1.8, 2.6)))+0.1, 'k--', lw=3)
+        plt.plot(linspace(1.8, 2.6), log10(Mstar_FJ(linspace(1.8, 2.6)))-0.1, 'k--', lw=3)
+
+        if save_plots:
+            plt.savefig('FJ_Es_ref.pdf', bbox_inches='tight')
+        '''
+        ----------- FP
+        '''
+        fig = plt.figure()
+        plt.xlabel(r"$\log\rm\,M_\ast/kpc$", fontsize=16)
+        plt.ylabel(r"$\rm\,10.6+2\log\,\sigma/130\,km\,s^{-1}+\log\,R_e/2\,kpc$", fontsize=16)
+        plt.xlim(9, 11.75)
+        ax = fig.add_subplot(111)
+        ax.text(0.1, 0.825, r"$\rm Es$", fontsize=18, color='#BD000D', transform=ax.transAxes)
+
+        # etg
+        w = bt > bt_ells
+        # fp
+        fp = 10.6+2.*log10(vc[w]/factor/130.)+log10(Re[w]/2.)
+        x, y, H, lev, mstar_bin, fp_bin, e_fp_bin = bins_and_hist(mstar[w], 10.**fp, mstar[w] > 0, size_hist, sigs)
+        # plt.errorbar(log10(mstar_bin), fp_bin, yerr=0.5, c='r', fmt='o')
+        plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Reds'))
+        plt.plot(linspace(9, 12), linspace(9, 12), 'k-', lw=3)
+        plt.plot(linspace(9, 12), linspace(9, 12)+0.06, 'k--', lw=3)
+        plt.plot(linspace(9, 12), linspace(9, 12)-0.06, 'k--', lw=3)
+
+        if save_plots:
+            plt.savefig('FP_Es_ref.pdf', bbox_inches='tight')
 
     '''
     ----------- Mass - size relation
@@ -657,19 +750,25 @@ def plot_angular_momentum_size_velocity():
     ax.text(0.1, 0.9, r"$\rm Sc-Sb-Sa$", fontsize=18, color='#151AB0', transform=ax.transAxes)
     ax.text(0.1, 0.825, r"$\rm S0-Es$", fontsize=18, color='#BD000D', transform=ax.transAxes)
 
-    # spirals
-    w = bt < bt_ltg
-    # plt.plot(log10(r200)[w], log10(Re)[w], 'b.', alpha=0.0075)
-    x, y, H, lev, mstar_bin, Re_bin, e_Re_bin = bins_and_hist(mstar, Re, w, size_hist, sigs)
-    # plt.errorbar(log10(mstar_bin), log10(Re_bin), yerr=abs(log10(Re_bin)-log10(e_Re_bin)), c='b', fmt='o')
-    plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Blues'), alpha=0.75)
+    if len(bt[bt<0])>0:
+        x, y, H, lev, mstar_bin, Re_bin, e_Re_bin = bins_and_hist(mstar, Re, bt<0, size_hist, sigs)
+        plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Greys'), alpha=0.75)
 
-    # ellipticals
-    w = bt > bt_ltg
-    # plt.plot(log10(r200)[w], log10(Re)[w], 'r.', alpha=0.0075)
-    x, y, H, lev, mstar_bin, Re_bin, e_Re_bin = bins_and_hist(mstar, Re, w, size_hist, sigs)
-    # plt.errorbar(log10(mstar_bin), log10(Re_bin), yerr=abs(log10(Re_bin)-log10(e_Re_bin)), c='r', fmt='o')
-    plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Reds'), alpha=0.75)
+
+    else:
+        # spirals
+        w = bt < bt_ltg
+        # plt.plot(log10(r200)[w], log10(Re)[w], 'b.', alpha=0.0075)
+        x, y, H, lev, mstar_bin, Re_bin, e_Re_bin = bins_and_hist(mstar, Re, w, size_hist, sigs)
+        # plt.errorbar(log10(mstar_bin), log10(Re_bin), yerr=abs(log10(Re_bin)-log10(e_Re_bin)), c='b', fmt='o')
+        plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Blues'), alpha=0.75)
+
+        # ellipticals
+        w = bt > bt_ltg
+        # plt.plot(log10(r200)[w], log10(Re)[w], 'r.', alpha=0.0075)
+        x, y, H, lev, mstar_bin, Re_bin, e_Re_bin = bins_and_hist(mstar, Re, w, size_hist, sigs)
+        # plt.errorbar(log10(mstar_bin), log10(Re_bin), yerr=abs(log10(Re_bin)-log10(e_Re_bin)), c='r', fmt='o')
+        plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Reds'), alpha=0.75)
 
     mass_size_etg = lambda mass: -5.54061 + 0.56*log10(mass)
     mass_size_ltg = lambda mass: -1. + 0.14*log10(mass) + 0.25 * log10(1. + mass/3.98e10)
@@ -685,7 +784,16 @@ def plot_angular_momentum_size_velocity():
 def plot_bf_distributions():
 
     # Bulge-fraction distribution
-    btf = genfromtxt('bt_distr_mstar.txt')
+    btf = genfromtxt('bt_distr_mstarOLD.txt')
+
+    for i in range(2, 6):
+        for k in range(40, 50):
+            bth = btf[k, 0]
+            btf[k, i] /= ((bth-0.8)/0.2 * 8.) + 1.
+    for i in range(2, 10):
+        for k in range(0, 10):
+            bth = btf[k, 0]
+            btf[k, i] *= (-(bth-0.2)/0.2 * 2.) + 1.
 
     cmap = get_cmap('coolwarm')
     labs = [r"$9<\log\,M_\ast<9.25$", r"$9.25<\log\,M_\ast<9.5$", r"$9.5<\log\,M_\ast<9.75$", r"$9.75<\log\,M_\ast<10$",
@@ -697,21 +805,26 @@ def plot_bf_distributions():
     for i in range(2, 11):
         c = linspace(0.01, 0.99, num=9)[i-2]
         ax.bar(btf[:, 0], btf[:, i], width=btf[:, 1]-btf[:, 0], color='none', edgecolor=cmap(c), lw=3)
-        ax.text(0.35, linspace(0.3, 0.7, num=9)[i-2], labs[i-2], fontsize=16, color=cmap(c), transform=ax.transAxes)
+        # ax.text(0.35, linspace(0.3, 0.9, num=9)[i-2], labs[i-2], fontsize=16, color=cmap(c), transform=ax.transAxes)
+        ax.text(0.375, linspace(0.3, 0.89, num=9)[i-2], labs[i-2], fontsize=16, color=cmap(c), transform=ax.transAxes)
 
-    ax.axvline(0.2, ymin=0, ymax=1, ls='--', c='k')
-    ax.axvline(0.5, ymin=0, ymax=.26, ls='--', c='k')
-    ax.axvline(0.5, ymin=0.8, ymax=1, ls='--', c='k')
+    ax.axvline(0.25, ymin=0, ymax=1, ls='--', c='k')
+    # ax.axvline(0.5, ymin=0, ymax=.26, ls='--', c='k')
+    # ax.axvline(0.5, ymin=0.8, ymax=1, ls='--', c='k')
     ax.axvline(0.8, ymin=0, ymax=1, ls='--', c='k')
-    ax.text(0.025, 0.9, r"$\rm Sc-Sb$", fontsize=18, color='#151AB0', transform=ax.transAxes)
-    ax.text(0.325, 0.9, r"$\rm Sa$", fontsize=18, color='#008540', transform=ax.transAxes)
-    ax.text(0.625, 0.9, r"$\rm S0$", fontsize=18, color='#AB9700', transform=ax.transAxes)
-    ax.text(0.875, 0.9, r"$\rm Es$", fontsize=18, color='#BD000D', transform=ax.transAxes)
+    # ax.text(0.025, 0.9, r"$\rm late"
+    ax.text(0.075, 0.85, r"$\rm late$" + "\n" +
+                         r"$\rm types$", fontsize=18, color='#151AB0', transform=ax.transAxes)
+    # ax.text(0.325, 0.9, r"$\rm Sa$", fontsize=18, color='#008540', transform=ax.transAxes)
+    # ax.text(0.625, 0.9, r"$\rm S0$", fontsize=18, color='#AB9700', transform=ax.transAxes)
+    # ax.text(0.875, 0.9, r"$\rm early"
+    ax.text(0.85, 0.85, r"$\rm early$" + "\n" +
+                        r"$\rm types$", fontsize=18, color='#BD000D', transform=ax.transAxes)
 
     ax.set_xlabel(r"$\rm B/T$", fontsize=18)
     ax.set_ylabel(r"$\rm P(B/T)$", fontsize=18)
     ax.set_xlim([0, 1])
-    plt.savefig("bt_hist_mstar.pdf", bbox_inches='tight')
+    plt.savefig("bt_hist_mstar_corr.pdf", bbox_inches='tight')
     plt.show()
 
 def plot_shmrs():
@@ -722,7 +835,7 @@ def plot_shmrs():
     Ms = Mstar(0., mode='low', model='B10', no_scatter=True)
     mstar_b10 = []
 
-    print "generating mstar..."
+    print ("generating mstar...")
     for m in mhalo:
         mstar_b10.append(Ms(m))
     mstar_b10 = array(mstar_b10)

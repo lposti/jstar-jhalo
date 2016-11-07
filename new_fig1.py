@@ -1,12 +1,7 @@
-from math import pi
-from numpy import genfromtxt, power, log10, array, searchsorted, arange, interp, linspace,\
-    asarray, log, exp, histogram2d, float32, percentile, sqrt, logspace, median, std, mean, append,\
-    cumsum, sort, argmin
-from numpy import abs as npabs
-from numpy.random import normal, uniform, choice
-from warnings import simplefilter, catch_warnings
+from numpy import genfromtxt, power, log10, array, searchsorted, arange, interp, asarray, logspace
+from numpy.random import normal
 import matplotlib.pylab as plt
-from matplotlib.cm import get_cmap
+
 
 class Mstar(object):
 
@@ -73,31 +68,49 @@ j_halo_mstar = 4.23e4 * 0.035 * power(mstar / 1e12, 2./3.)
 lmhalo, lmstar, ljhalo, ljhalo_mstar = log10(mhalo), log10(mstar), log10(j_halo), log10(j_halo_mstar)
 ljstar_d, ljstar_e = log10(jstarRF(lmstar, disc=True)), log10(jstarRF(lmstar, disc=False))
 
-fig = plt.figure(figsize=(10,8))
+# read RF12 data
+rf12_discs = genfromtxt('rf12_discs.dat')
+rf12_discs_lmstar = rf12_discs[:, 14]
+rf12_discs_ljstar = log10(rf12_discs[:, 13])
+rf12_discs_type = rf12_discs[:, 3]
+rf12_sph = genfromtxt('rf12_sph.dat')
+rf12_sph_lmstar = rf12_sph[:, 10]
+k = lambda n: 1.15 + 0.029*asarray(n) + 0.062*power(asarray(n), 2)
+rf12_sph_ljstar = log10(rf12_sph[:, 9] * 2.5 / k(rf12_sph[:, 5]))
+rf12_sph_type = rf12_sph[:, 3]
+
+fig = plt.figure(figsize=(10, 8))
 ax = fig.add_subplot(211)
 fig.subplots_adjust(hspace=0.)
 ax.plot(lmstar, lmhalo, 'k-', lw=3)
 ax.set_ylabel(r"$\rm \log M_h \,\,\, [M_\odot]$", fontsize=16)
 ax.set_xticklabels([])
-ax.set_ylim([9.75,14.5])
+ax.set_ylim([10.25, 14.5])
 
 ax2 = fig.add_subplot(212)
-ax2.plot(lmstar, ljhalo_mstar, 'k--', label=r"$\rm DM\,\,haloes$")
-ax2.plot(lmstar, ljhalo, 'm-', lw=3, label=r"$\rm model\,\,galaxies$")
-ax2.plot(lmstar, ljstar_d, 'b-', lw=3, label=r"$\rm obs.\,\,discs$")
-ax2.plot(lmstar, ljstar_e, 'r-', lw=3, label=r"$\rm obs.\,\,bulges$")
+ax2.plot(lmstar, ljhalo_mstar, 'k--', label=r"$\rm DM:\,\,j_h\propto M_h^{2/3}$")
+ax2.plot(lmstar, ljhalo, 'm-', lw=3, label=r"$\rm model\,\,galaxies:\,\, j_\ast=j_h\propto M_h(M_\ast)^{2/3}$")
+ax2.plot(lmstar, ljstar_d, 'b-', lw=3, label=r"$\rm observed\,\,late-types$")
+ax2.plot(lmstar, ljstar_e, 'r-', lw=3, label=r"$\rm obserevd\,\,early-types$")
 ax2.set_xlabel(r"$\rm \log \,M_\ast\quad or\quad \log \,M_h \,\,\,[M_\odot]$", fontsize=16)
 ax2.set_ylabel(r"$\rm \log \,j_\ast\quad or\quad \log \,j_h \,\,\,[kpc\,km\,s^{-1}]$", fontsize=16)
-ax2.set_ylim([0,5.25])
-ax2.legend(loc='best', frameon=False)
+ax2.set_ylim([0.5, 5.75])
+ax2.legend(loc='upper left', frameon=False)
+
+w_d = (rf12_discs_type >= 3.) & (rf12_discs_type <= 5.)
+w_s = (rf12_sph_type <= -3.)
+# ax2.plot(rf12_discs_lmstar[w_d], rf12_discs_ljstar[w_d], 'bo')
+# ax2.plot(rf12_sph_lmstar[w_s], rf12_sph_ljstar[w_s], 'sr')
 
 # arrows
 dict_arrowstyle = dict(arrowstyle='<->', lw=2)
+
 ax2.annotate("", xy=(lmstar[0], ljstar_d[0]), xytext=(lmstar[0],ljhalo[0]),
                      arrowprops=dict_arrowstyle)
 ax2.annotate("", xy=(lmstar[-1], ljstar_e[-1]), xytext=(lmstar[-1],ljhalo[-1]),
              arrowprops=dict_arrowstyle)
-ax2.text(8.25,1.8,r"$f_j$", fontsize=16)
-ax2.text(11.6,3.9,r"$f_j$", fontsize=16)
+ax2.text(8.25, 1.8, r"$f_j$", fontsize=16)
+ax2.text(11.6, 3.9, r"$f_j$", fontsize=16)
 
+plt.savefig("SHMR_RF12.pdf", bbox_inches='tight')
 plt.show()

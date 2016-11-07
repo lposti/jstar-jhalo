@@ -25,8 +25,13 @@ def vrot_vc_P12(vc):
                 [380, 416],
                 [420, 449]], dtype=np.float)
 
-  vhalo, vrot = d[:,0], d[:, 1]
+  vhalo, vrot = d[:, 0], d[:, 1]
   return np.interp(vc, vhalo, vrot / vhalo, left= vrot[0]/vhalo[0], right=vrot[-1]/vhalo[-1])
+
+def vrot_vc_D10(vc):
+    x = np.asarray(vc)
+    y0, x0, alpha, beta, gamma = 316.4, 1.078, 0.009, -1.16, 6.993
+    return y0 * (x/x0)**alpha * (0.5*0.5*(x/x0)**gamma)**((beta-alpha)/gamma)
 
 if __name__ == '__main__':
   print (vrot_vc_P12(30.))
