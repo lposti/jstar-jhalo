@@ -13,6 +13,7 @@ import h5py
 from vrot_vc import vrot_vc_P12
 from hmf.sample import sample_mf
 from hmf.fitting_functions import Tinker10
+from mpl_toolkits.axes_grid1 import host_subplot
 
 
 class Mstar(object):
@@ -410,7 +411,7 @@ def plot_angular_momentum_size_velocity():
 
     size_hist = 20
     sigs = [68., 90.]
-    save_plots = False
+    save_plots = True
 
     '''
     ----------- Mstar-Mhalo
@@ -497,9 +498,13 @@ def plot_angular_momentum_size_velocity():
     ----------- fj(M_halo)
     '''
     fig = plt.figure()
-    plt.xlabel(r"$\log\rm\,M_h/M_\odot$", fontsize=16)
-    plt.ylabel(r"$\log\rm\,f_j(M_h)\equiv j_\ast / j_h$", fontsize=16)
-    ax = fig.add_subplot(111)
+    # ax = fig.add_subplot(111)
+    ax = host_subplot(111)
+    ax2 = ax.twiny()
+
+    ax.set_xlabel(r"$\log\rm\,M_h/M_\odot$", fontsize=16)
+    ax.set_ylabel(r"$\log\rm\,f_j(M_h)\equiv j_\ast / j_h$", fontsize=16)
+    ax2.set_xlabel(r"$\log\,M_\ast/M_\odot$", fontsize=16)
 
     if len(bt[bt<0])>0:
         x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, bt<0, size_hist, sigs)
@@ -508,10 +513,16 @@ def plot_angular_momentum_size_velocity():
         # ------ Median relation
         x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, bt<0, size_hist, sigs, bin_size=30)
         # plt.errorbar(log10(mhalo_bin), log10(fj_bin), yerr=abs(log10(fj_bin)-log10(e_fj_bin)), c='k', fmt='o')
+
+        ax.set_xlim(10.5,13.5)
+        ax2.set_xlim(10.5,13.5)
+        mhx = logspace(10.5, 13.5, num=100)
+        # Ax2 tick location in stellar mass
+        mstar_tick_loc = arange(8.0, 11.5, 0.5)
     else:
-        ax.text(0.1, 0.9, r"$\rm Sc-Sb$", fontsize=18, color='#151AB0', transform=ax.transAxes)
+        ax.text(0.1, 0.9, r"$\rm late-types$", fontsize=18, color='#151AB0', transform=ax.transAxes)
         # ax.text(0.1, 0.85, r"$\rm Sa-S0$", fontsize=18, color='#009603', transform=ax.transAxes)
-        ax.text(0.1, 0.8, r"$\rm Es$", fontsize=18, color='#BD000D', transform=ax.transAxes)
+        ax.text(0.1, 0.825, r"$\rm early-types$", fontsize=18, color='#BD000D', transform=ax.transAxes)
 
         # spirals
         w = bt < bt_spirals
@@ -519,7 +530,7 @@ def plot_angular_momentum_size_velocity():
         x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, w, size_hist, sigs)
         # plt.errorbar(log10(mhalo_bin), log10(fj_bin), yerr=abs(log10(fj_bin)-log10(e_fj_bin)), c='b', fmt='o')
         # plt.contour(x, y, log10(H).T, levels=lev, colors='#151AB0')
-        plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Blues'), alpha=0.75)
+        ax.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Blues'), alpha=0.75)
 
         '''
         # Sa and lenticulars
@@ -537,20 +548,40 @@ def plot_angular_momentum_size_velocity():
         x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, w, size_hist, sigs)
         # plt.errorbar(log10(mhalo_bin), log10(fj_bin), yerr=abs(log10(fj_bin)-log10(e_fj_bin)), c='r', fmt='o')
         # plt.contour(x, y, log10(H).T, levels=lev, colors='#BD000D')
-        plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Reds'), alpha=0.75)
-        plt.xlim([10.7, 13.5])
+        ax.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Reds'), alpha=0.75)
 
         # ------ Median relation
         # x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, bt > 0, size_hist, sigs, bin_size=30)
         x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, (bt < bt_spirals), size_hist, sigs, bin_size=30)
         # plt.errorbar(log10(mhalo_bin), log10(fj_bin), yerr=abs(log10(fj_bin)-log10(e_fj_bin)), c='b', fmt='o')
-        plt.plot(log10(mhalo_bin)[:8], log10(fj_bin)[:8], 'bo-')
+        ax.plot(log10(mhalo_bin)[:8], log10(fj_bin)[:8], 'bo-')
         x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, (bt > bt_ells), size_hist, sigs, bin_size=30)
         # plt.errorbar(log10(mhalo_bin), log10(fj_bin), yerr=abs(log10(fj_bin)-log10(e_fj_bin)), c='r', fmt='s')
-        plt.plot(log10(mhalo_bin)[2:], log10(fj_bin)[2:], 'rs-')
+        ax.plot(log10(mhalo_bin)[2:], log10(fj_bin)[2:], 'rs-')
+
+        # second x-axis with Mstar
+        ax.set_xlim(11,13.5)
+        ax2.set_xlim(11,13.5)
+        mhx = logspace(11, 13.5, num=100)
+        # Ax2 tick location in stellar mass
+        mstar_tick_loc = arange(9, 11.5, 0.5)
+
+    Ms = Mstar(0., mode='high', model='L12', no_scatter=True)
+    ms_mhx = array([Ms(m) for m in mhx])
+
+    # Ax2 string tick definition
+    ax2_tick_labels = ["%2.1f" % (m) for m in mstar_tick_loc]
+
+    ax2_tick_loc = []
+    for msx in mstar_tick_loc:
+        ax2_tick_loc.append(log10(mhx[argmin(npabs( log10(ms_mhx) - msx))]))
+
+    ax2.set_xticks(ax2_tick_loc)
+    ax2.set_xticklabels(ax2_tick_labels)
 
     if save_plots:
-        plt.savefig('fj-Mh_all_ref.pdf', bbox_inches='tight')
+        plt.savefig('fj-Mh_BT_ref.pdf', bbox_inches='tight')
+    # plt.savefig('fj-Mh_BT_ref.pdf', bbox_inches='tight')
 
     '''
     ----------- Kravtsov
@@ -559,9 +590,9 @@ def plot_angular_momentum_size_velocity():
     plt.ylabel(r"$\log\rm\,R_e/kpc$", fontsize=16)
     plt.xlabel(r"$\log\rm\,r_{\rm vir}/kpc$", fontsize=16)
     ax = fig.add_subplot(111)
-    ax.text(0.1, 0.9, r"$\rm Sc-Sb$", fontsize=18, color='#151AB0', transform=ax.transAxes)
-    ax.text(0.1, 0.85, r"$\rm Sa-S0$", fontsize=18, color='#009603', transform=ax.transAxes)
-    ax.text(0.1, 0.8, r"$\rm Es$", fontsize=18, color='#BD000D', transform=ax.transAxes)
+    ax.text(0.1, 0.9, r"$\rm late-types$", fontsize=18, color='#151AB0', transform=ax.transAxes)
+    # ax.text(0.1, 0.85, r"$\rm Sa-S0$", fontsize=18, color='#009603', transform=ax.transAxes)
+    ax.text(0.1, 0.825, r"$\rm early-types$", fontsize=18, color='#BD000D', transform=ax.transAxes)
     # ax.text(0.4, 0.15, r"$\rm Kravtsov Plot$", fontsize=20, transform=ax.transAxes)
 
     if len(bt[bt<0])>0:
@@ -595,19 +626,21 @@ def plot_angular_momentum_size_velocity():
         # plt.contour(x, y, log10(H).T, levels=lev, colors='#BD000D')
         plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Reds'), alpha=0.75)
 
-        # ----- Median relation
-        # x, y, H, lev, r200_bin, Rd_bin, e_Rd_bin = bins_and_hist(r200, Re, bt > 0, size_hist, sigs, bin_size=30)
-        x, y, H, lev, r200_bin, Rd_bin, e_Rd_bin = bins_and_hist(r200, Re, (bt < bt_spirals) | (bt > bt_ells), size_hist, sigs, bin_size=30)
-        plt.errorbar(log10(r200_bin), log10(Rd_bin), yerr=abs(log10(Rd_bin)-log10(e_Rd_bin)), c='k', fmt='o')
+        # ------ Median relation
+        x, y, H, lev, r200_bin, Rd_bin, e_Rd_bin = bins_and_hist(r200, Re, (bt < bt_spirals), size_hist, sigs, bin_size=30)
+        # plt.errorbar(log10(mhalo_bin), log10(fj_bin), yerr=abs(log10(fj_bin)-log10(e_fj_bin)), c='b', fmt='o')
+        ax.plot(log10(r200_bin)[:8], log10(Rd_bin)[:8], 'bo-')
+        x, y, H, lev, r200_bin, Rd_bin, e_Rd_bin = bins_and_hist(r200, Re, (bt > bt_ells), size_hist, sigs, bin_size=30)
+        # plt.errorbar(log10(mhalo_bin), log10(fj_bin), yerr=abs(log10(fj_bin)-log10(e_fj_bin)), c='r', fmt='s')
+        ax.plot(log10(r200_bin)[2:], log10(Rd_bin)[2:], 'rs-')
 
-
-    plt.plot(log10(linspace(110, 800)), log10(0.015 * linspace(110, 800)), 'k-', lw=2)
-    plt.plot(log10(linspace(110, 800)), log10(0.015 * linspace(110, 800))+0.5, 'k--', lw=2)
-    plt.plot(log10(linspace(110, 800)), log10(0.015 * linspace(110, 800))-0.5, 'k--', lw=2)
-    plt.xlim([log10(110.), log10(800.)])
+    plt.plot(log10(linspace(125, 800)), log10(0.015 * linspace(125, 800)), 'k-', lw=2)
+    plt.plot(log10(linspace(125, 800)), log10(0.015 * linspace(125, 800))+0.5, 'k--', lw=2)
+    plt.plot(log10(linspace(125, 800)), log10(0.015 * linspace(125, 800))-0.5, 'k--', lw=2)
+    plt.xlim([log10(125.), log10(800.)])
 
     if save_plots:
-        plt.savefig('Re-r200_all_ref.pdf', bbox_inches='tight')
+        plt.savefig('Re-r200_BT_ref.pdf', bbox_inches='tight')
 
     '''
     ----------- Mo, Mao & White Rd-r200
@@ -661,8 +694,9 @@ def plot_angular_momentum_size_velocity():
     plt.ylabel(r"$\log\rm\,M_\ast/M_\odot$", fontsize=16)
     plt.xlabel(r"$\log\rm\,V_{max}/km\,s^{-1}$", fontsize=16)
     plt.ylim(8, 11.5)
+    plt.xlim(1.8, 2.5)
     ax = fig.add_subplot(111)
-    ax.text(0.1, 0.9, r"$\rm Sc-Sb$", fontsize=18, color='#151AB0', transform=ax.transAxes)
+    ax.text(0.1, 0.9, r"$\rm late-types$", fontsize=18, color='#151AB0', transform=ax.transAxes)
 
     if len(bt[bt<0])>0:
         x, y, H, lev, vc_bin, mstar_bin, e_mstar_bin = bins_and_hist(vc, mstar, bt<0, size_hist, sigs)
@@ -681,7 +715,7 @@ def plot_angular_momentum_size_velocity():
     plt.plot(linspace(1.9, 2.4), log10(Mstar_TF(linspace(1.9, 2.4)))-0.15, 'k--', lw=3)
 
     if save_plots:
-        plt.savefig('sTF_Sc_ref.pdf', bbox_inches='tight')
+        plt.savefig('sTF_BT_ref.pdf', bbox_inches='tight')
 
 
     if len(bt[bt<0])>0:
@@ -695,8 +729,9 @@ def plot_angular_momentum_size_velocity():
         plt.ylabel(r"$\log\rm\,M_\ast/M_\odot$", fontsize=16)
         plt.xlabel(r"$\log\rm\,\sigma/km\,s^{-1}$", fontsize=16)
         plt.ylim(9, 11.75)
+        plt.xlim(1.8, 2.6)
         ax = fig.add_subplot(111)
-        ax.text(0.1, 0.9, r"$\rm Es$", fontsize=18, color='#BD000D', transform=ax.transAxes)
+        ax.text(0.1, 0.9, r"$\rm early-types$", fontsize=18, color='#BD000D', transform=ax.transAxes)
 
         # ellipticals
         w = bt > bt_ells
@@ -714,7 +749,7 @@ def plot_angular_momentum_size_velocity():
         plt.plot(linspace(1.8, 2.6), log10(Mstar_FJ(linspace(1.8, 2.6)))-0.1, 'k--', lw=3)
 
         if save_plots:
-            plt.savefig('FJ_Es_ref.pdf', bbox_inches='tight')
+            plt.savefig('FJ_BT_ref.pdf', bbox_inches='tight')
         '''
         ----------- FP
         '''
@@ -722,8 +757,9 @@ def plot_angular_momentum_size_velocity():
         plt.xlabel(r"$\log\rm\,M_\ast/kpc$", fontsize=16)
         plt.ylabel(r"$\rm\,10.6+2\log\,\sigma/130\,km\,s^{-1}+\log\,R_e/2\,kpc$", fontsize=16)
         plt.xlim(9, 11.75)
+        plt.xlim(9, 12.)
         ax = fig.add_subplot(111)
-        ax.text(0.1, 0.825, r"$\rm Es$", fontsize=18, color='#BD000D', transform=ax.transAxes)
+        ax.text(0.1, 0.825, r"$\rm early-types$", fontsize=18, color='#BD000D', transform=ax.transAxes)
 
         # etg
         w = bt > bt_ells
@@ -737,7 +773,7 @@ def plot_angular_momentum_size_velocity():
         plt.plot(linspace(9, 12), linspace(9, 12)-0.06, 'k--', lw=3)
 
         if save_plots:
-            plt.savefig('FP_Es_ref.pdf', bbox_inches='tight')
+            plt.savefig('FP_BT_ref.pdf', bbox_inches='tight')
 
     '''
     ----------- Mass - size relation
@@ -747,8 +783,9 @@ def plot_angular_momentum_size_velocity():
     plt.ylabel(r"$\log\rm\,R_e/kpc$", fontsize=16)
     plt.xlim(8, 11.75)
     ax = fig.add_subplot(111)
-    ax.text(0.1, 0.9, r"$\rm Sc-Sb-Sa$", fontsize=18, color='#151AB0', transform=ax.transAxes)
-    ax.text(0.1, 0.825, r"$\rm S0-Es$", fontsize=18, color='#BD000D', transform=ax.transAxes)
+    ax.text(0.1, 0.9, r"$\rm late-types$", fontsize=18, color='#151AB0', transform=ax.transAxes)
+    # ax.text(0.1, 0.85, r"$\rm Sa-S0$", fontsize=18, color='#009603', transform=ax.transAxes)
+    ax.text(0.1, 0.825, r"$\rm early-types$", fontsize=18, color='#BD000D', transform=ax.transAxes)
 
     if len(bt[bt<0])>0:
         x, y, H, lev, mstar_bin, Re_bin, e_Re_bin = bins_and_hist(mstar, Re, bt<0, size_hist, sigs)
@@ -776,7 +813,7 @@ def plot_angular_momentum_size_velocity():
     plt.plot(linspace(9, 11.75), mass_size_ltg(logspace(9, 11.75)), 'b--', lw=2)
 
     if save_plots:
-        plt.savefig('Re-Ms_all_ref.pdf', bbox_inches='tight')
+        plt.savefig('Re-Ms_BT_ref.pdf', bbox_inches='tight')
 
     plt.show()
 
