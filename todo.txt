@@ -1,0 +1,113 @@
+- DM fraction: assume nfw e massa entro Re e' 1/2Mstar
+- M/L dyn: mass-plane (la sua non-omologia)
+
+Prob. scatter
+Possibilita'
+1) risolviamo il problema dello scatter
+2) asseriamo che e' un problm intrinseco di LCDM
+3) non ne parliamo: fermarsi a sez. 3 e magari esplorare i dettagli (tipo variare shmr). Ad esempio Dutton+2010
+
+vrot-vmax con assunzioni consistenti alla shmr e c-m varie
+nfw? altri profili? magari espandendo sez. 3
+
+Sez. 3: TF non piega nelle osservazioni perche' gli togli selettivamente alte masse.
+Non ci sono spirali dove c'e' la curvatura.
+
+Intro: ad alte masse stellari non ci sono piu' fast-rotators
+
+Fig. 4: senza contorni e solo halo mass function uniforme. Solo punti con quartili
+Fig. 3: tutte le assunzioni tipo lambda e cm
+Fig. 1: quattro frecce con frazioni accanto, e quadre prima di 2/3
+
+
+Abstract:
+The ratio between the amount of specific angular momentum that today is in the
+stellar components of galaxies with respect to that stored in the dark matter halo,
+$f_j \equiv j_\ast/j_h$, encapsulates much information on how the galaxy formed.
+This ratio, also known as retained fraction of angular momentum, is today equal
+to $1$ if galaxy formation has on average conserved the angular momentum of the
+initial protogalaxy, or smaller than $1$ if some angular momentum was dissipated.
+We use cosmologically-motivated models to study this ratio across a wide range
+in halo masses, $10.5 \leq \log M_h/M_\odot \leq 14$, and for different galaxy
+morphological types separately, i.e. late-type and early-type galaxies.
+One key ingredient of our model is the stellar-to-halo mass relation (SHMR)
+$M_\ast=M_\ast(M_h)$ which assumes the abundance matching ansatz and is constrained
+by galaxy-galaxy lensing, galaxy clustering and galaxy number density.
+We constrain our models with either state-of-the-art measurements of the stellar
+specific angular momentum or with recent estimates of galactic scaling laws such
+as the Tully-Fisher, Faber-Jackson, mass-size and Fundamental Plane.
+We find that in order to make realistic galaxies, which simultaneously adhere
+on such well-studied correlations, it is \emph{inevitable} that $f_j$ must vary
+sensibly with halo mass other than with morphological type. Such variation mimics,
+and it is in fact its reflection of, the behaviour of the observed stellar fraction
+$f_\ast \equiv M_\ast/M_h$ as a function of halo mass: galaxies with haloes of
+$M_h \lesssim 10^{12} M_\odot$ are less efficient at forming stars and retain less
+angular momentum during galaxy formation, as well as galaxies with haloes of
+$M_h \gtrsim 10^{12} M_\odot$. Any galaxy formation model which is bound to a $f_\ast$
+peaking at about $M_h \sim 10^{12} M_\odot$ must employ a mass-varying retained
+fraction of angular momentum in order to produce realistic late- and early-type
+galaxies today.
+
+
+
+The formation of galaxies from initial proto-galactic hot gas clouds is a strongly
+dissipative process which, in the standard $\Lambda$-Cold Dark Matter ($\Lambda$CDM)
+framework, is guided by the hierarchy of mergers of the extended
+dark matter haloes in which they reside \citep[see e.g.,][]{WhiteRees78}. While
+gas is cooling, dissipating energy ($E$) and therefore being accumulated in dense
+regions close to the centre of the halo's potential well, its initial total angular
+momentum ($J$) is typically retained in this process leading to the formation of a cold,
+thin, rotating and star-forming disc.
+Many studies have indeed shown that with this first-order approximation of
+conservation of total angular momentum, one is able to predict the general behaviour
+of some observed scaling laws in the nearby Universe \citep[see][]{Fall83,Dalcanton+1997,
+MMW98}
+
+At the early stages of structure collapse, the dark halo/protogalactic cloud system
+acquires spin from the tidal torques exerted by the surrounding structures \citep[][]
+{Hoyle1949,Peebles69}. Hence, prior to the collapse of gas in the potential well
+of the dark halo, the baryons and dark matter had the same angular momentum per unit
+mass, i.e. the same specific angular momentum
+\begin{equation}
+j_\ast=\jh,
+\end{equation}
+where $j_\ast=J_\ast/M_\ast$ is the ratio between angular momentum and mass of the
+proto-galaxy\footnote{
+In this work we focus on the role of the stellar angular momentum under the working
+assumption that they keep the same angular momentum of the gas from which they formed.
+So even if the proto-galactic cloud contains no star, the initial spin of stars and
+gas is the same.
+} and $\jh=J_{\rm h}/\Mh$ is that of the halo \citep[see][]{FallEfstathiou1980}.
+
+In standard $\Lambda$CDM, dark matter haloes are homologous structures and therefore
+any property of the halo is known by knowing its mass $\Mh$ and the global scaling
+of that property with mass for the halo population. In particular, more massive
+haloes are bigger in size and have larger circular velocities, therefore they
+also have larger specific angular momenta and specifically the $\log\jh-\loh\Mh$
+relation turns out to be linear \citet[][hereafter RF12]{RF12}. This mostly reflects
+the fact that more massive haloes are larger and not that the orbits of their particles
+are more circular: indeed if following \cite{Peebles1969} one defines a dimensionless
+parameter aimed at quantifying the rotation rate of self-gravitating bodies as
+\begin{equation}
+\label{def:lambda}
+\lambda \equiv \frac{J\,|E|^{1/2}}{G\,M^{5/2}},
+\end{equation}
+where $G$ is the gravitational constant, one immediately realises, e.g. from
+linear tidal torque theory or numerical simulations, that it is virtually
+independent on halo mass ({\lp Barnes and Efstathiou 1987 and Efstathiou?})
+
+The physics of galaxies is instead more complicated and smaller galaxies are not
+scaled down versions of larger ones. However, many scaling laws are konwn to
+exist between e.g. the total luminosity and rotational velocities of spiral galaxies
+{\lp (Tully-Fisher)} or the velocity dispersion of ellipticals {\lp (Faber-Jackson)},
+the surface brightness and effective radius ({\rm Kormendy}). Recently, many
+authors have started to investigate observationally the specific angular
+momentum-mass of galaxies, starting from \citetalias{RF12} who
+focused on stars in a sample of well resolved nearby galaxies, then
+\cite{ObreschkowGlazebrook14} who measured angular momenta of cold gas from
+high quality HI observations, then \cite{Cortese+16} who observed both stellar
+and gas rotation in the local Universe for a large sample of galaxies, to
+\cite{Burkert+16} and \cite{Harrison+17} who measured gas rotations from H$\alpha$
+observations at $z\simeq 1$. All these works agree that the $\log j_\ast-\log M_\ast$
+is a linear relation with slope similar to that of the dark matter haloes (and
+virtually insensitive on redshift up to $z=1$).

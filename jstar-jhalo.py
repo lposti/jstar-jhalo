@@ -3,7 +3,7 @@ __author__ = 'lposti'
 from math import pi
 from numpy import genfromtxt, power, log10, array, searchsorted, arange, interp, linspace,\
     asarray, log, exp, histogram2d, float32, percentile, sqrt, logspace, median, std, mean, append,\
-    cumsum, sort, argmin, full_like
+    cumsum, sort, argmin, full_like, vstack
 from numpy import abs as npabs
 from numpy.random import normal, uniform, choice
 from warnings import simplefilter, catch_warnings
@@ -14,6 +14,7 @@ from vrot_vc import vrot_vc_P12
 from hmf.sample import sample_mf
 from hmf.fitting_functions import Tinker10
 from mpl_toolkits.axes_grid1 import host_subplot
+import corner
 
 
 class Mstar(object):
@@ -52,11 +53,20 @@ class Mstar(object):
             return 10. ** normal(log10(Ms_med), 0.25, 1)[0]
 
 
+def median_bins(a, b, w, bin_size=11):
+    bins = logspace(log10(a[w].min()), log10(a[w].max()), num=bin_size)
+    a_bin = [0.5*(bins[i-1]+bins[i]) for i in range(1, len(bins))]
+    b_bin = [median((b[w])[(a[w] <= bins[i]) & (a[w] > bins[i-1])]) for i in range(1, len(bins))]
+    e_b_bin = [percentile((b[w])[(a[w] <= bins[i]) & (a[w] > bins[i-1])], 68.2) for i in range(1, len(bins))]
+
+    return array(a_bin), array(b_bin), array(e_b_bin)
+
+
 def bins_and_hist(a, b, w, size_hist, sigs, bin_size=11):
     bins = logspace(log10(a[w].min()), log10(a[w].max()), num=bin_size)
     a_bin = [0.5*(bins[i-1]+bins[i]) for i in range(1, len(bins))]
     b_bin = [median((b[w])[(a[w] <= bins[i]) & (a[w] > bins[i-1])]) for i in range(1, len(bins))]
-    e_b_bin = [std((b[w])[(a[w] <= bins[i]) & (a[w] > bins[i-1])]) for i in range(1, len(bins))]
+    e_b_bin = [percentile((b[w])[(a[w] <= bins[i]) & (a[w] > bins[i-1])], 68.) for i in range(1, len(bins))]
 
     x_bin, y_bin = linspace(log10(a[w]).min(), log10(a[w]).max(), num=size_hist),\
                    linspace(log10(b[w]).min(), log10(b[w]).max(), num=size_hist)
@@ -107,6 +117,28 @@ def Mstar_vU(mhalo, mode='def', no_scatter=False):
         ms.append(10. ** normal(log10(ms0 * power(m / mh1, b1) / power(1. + m / mh1, b1-b2)), s, 1)[0])
 
     return array(ms)
+
+
+def Mstar_D10_ltg(mstar):
+    a, b = -0.5, 0
+    x0, y0, g = 10.**10.4, 10.**1.61, 1.
+
+    mh = []
+    for m in mstar:
+        y = 10.**normal(log10(y0 * (m/x0)**a * (0.5 + 0.5*(m/x0)**g)**((b-a)/g)), 0.2, 1)[0]
+        mh.append(m*y)
+    return array(mh)
+
+
+def Mstar_D10_etg(mstar):
+    a, b = -0.15, 0.85
+    x0, y0, g = 10.**10.8, 10.**1.97, 2.
+
+    mh = []
+    for m in mstar:
+        y = 10.**normal(log10(y0 * (m/x0)**a * (0.5 + 0.5*(m/x0)**g)**((b-a)/g)), 0.2, 1)[0]
+        mh.append(m*y)
+    return array(mh)
 
 
 def get_bt_distribution_none(mstar):
@@ -219,12 +251,13 @@ def get_bt_distribution_from_lambda(mstar, mhalo, lambda_halo):
 
 def plot_angular_momentum_size_velocity():
 
-    size = 500000
+    size = 50000
     # Planck parameters
     h, Om, OL = 0.677, 0.31, 0.69
 
+    '''
     # uniform halo mass function
-    # mhalo = array(10. ** uniform(10., 13.5, size), dtype=float32)
+    mhalo = array(10. ** uniform(10.5, 13.5, size), dtype=float32)
 
     # read halo mass-function
     # mhf = genfromtxt('mVector_PLANCK-SMT_11-13.txt')
@@ -232,7 +265,7 @@ def plot_angular_momentum_size_velocity():
     # mhf = genfromtxt('mVector_PLANCK-SMT_11-14.5.txt')
     # mhalo = array(choice(mhf[:, 0], p=mhf[:, 5]/sum(mhf[:, 5]), size=size), dtype=float32)
 
-    mhalo, _ = sample_mf(size, 11., Mmax=15.5, hmf_model=Tinker10)
+    # mhalo, _ = sample_mf(size, 11., Mmax=15.5, hmf_model=Tinker10)
 
 
     Ms = Mstar(0., mode='high', model='L12')
@@ -243,19 +276,23 @@ def plot_angular_momentum_size_velocity():
         mstar.append(Ms(m))
     mstar = array(mstar)
 
-
     # mstar = Mstar_vU(mhalo, mode='def')
+    '''
 
-    ms_lowlim, ms_highlim = 7., 12.# 11.75
-    mhalo = mhalo[(log10(array(mstar)) > ms_lowlim) & (log10(array(mstar)) < ms_highlim)]
-    mstar = mstar[(log10(array(mstar)) > ms_lowlim) & (log10(array(mstar)) < ms_highlim)]
+    mstar = array(10. ** uniform(9.35, 11., size), dtype=float32)
+    # mstar = array(10. ** uniform(9., 11., size), dtype=float32)
+    mhalo = Mstar_D10_ltg(mstar)
+
+    # ms_lowlim, ms_highlim = 7., 12.# 11.75
+    # mhalo = mhalo[(log10(array(mstar)) > ms_lowlim) & (log10(array(mstar)) < ms_highlim)]
+    # mstar = mstar[(log10(array(mstar)) > ms_lowlim) & (log10(array(mstar)) < ms_highlim)]
 
     # DM halo spin parameter distribution
     # from Maccio', Dutton & van den Bosch (2008)
     lambda_halo = 10. ** normal(-1.466, 0.253, len(mhalo))
 
-    # bt = get_bt_distribution_none(mstar)
-    bt = get_bt_distribution_from_SDSS(mstar)
+    bt = get_bt_distribution_none(mstar)
+    # bt = get_bt_distribution_from_SDSS(mstar)
     # bt = get_bt_distribution_from_meert14(mstar)
     # bt, mstar, mhalo, lambda_halo = get_bt_distribution_from_lambda(mstar, mhalo, lambda_halo)
 
@@ -283,7 +320,7 @@ def plot_angular_momentum_size_velocity():
     # 0.6 factor to account for different normalization in SHMR
     vc = sqrt(G * f(2.15) / f(cvir) * cvir / 2.15 * pow(rho_hat, 1./3.)) * power(mhalo / h, 1./3.)
     for i in range(len(vc)):
-        vc[i] *= .675*vrot_vc_P12(vc[i])
+        vc[i] *= .6*vrot_vc_P12(vc[i])
 
     # print "%e %e" % (f(10.) * 2.15 / (f(2.15) * 10.), sqrt(2. * f(10.) * 2.15 / (f(2.15) * 10.)))
 
@@ -329,7 +366,7 @@ def plot_angular_momentum_size_velocity():
             # sE
             j0, alpha, s = 2.73, 0.6, 0.2
         elif bf == -1:
-            j0, alpha, s = 3. , 0.6, 0.22
+            j0, alpha, s = 3. , 0.67, 0.22
         else:
             print (bf)
             raise ValueError("Problem in bt not in ]0,1]")
@@ -352,14 +389,71 @@ def plot_angular_momentum_size_velocity():
     jstar, jdisc, jbulge = array(jstar), array(jdisc), array(jbulge)
     fj = jstar / j_halo  # jstar_FR(log10(0.158 * mhalo)) / j_halo
 
-    # Kravtsov
+    # Tully Fisher
     Mstar_TF = lambda t: 10.**(-0.61+4.93*asarray(t))  # McGaugh & Schombert (2015), sTF @ 3.6um
     vstar_TF = lambda t: 10.**(0.61/4.93 + 1./4.93*asarray(t))
+    # Mstar_TF = lambda t: 10.**(1.49+4.09*asarray(t))  # McGaugh & Schombert (2015), Baryonic-TF @ 3.6um
+    # vstar_TF = lambda t: 10.**(-1.49/4.09 + 1./4.09*asarray(t))
 
     sstar_FJ = lambda t: 10.**(2.054 + 0.286 * asarray(t-10.))
     Mstar_FJ = lambda t: 10.**(-2.054/0.286 + 10. + 1./0.286 * asarray(t))
 
+    # Shen et al. (2003)
+    mass_size_etg = lambda mass: -5.54061 + 0.56*log10(mass)
+    mass_size_ltg = lambda mass: -1. + 0.14*log10(mass) + 0.25 * log10(1. + mass/3.98e10)
+
+    # Lange et al. (2015) (Tables 2-3, g-i colour cut, r-band Re)
+    # mass_size_etg = lambda mass: log10(8.25e-5) + 0.44*log10(mass)
+    # mass_size_ltg = lambda mass: log10(13.98e-3) + 0.25*log10(mass)
+    # mass_size_ltg = lambda mass: -1. + 0.16*log10(mass) + 0.65 * log10(1. + mass/17.1e10)
+
+    # Cappellari et al. 13, sigma from mass plane
+    sigma_MP = lambda mass: 10.**(0.5*(log10(mass)-10.6-log10(10.**mass_size_etg(mass)/2.))+log10(130.))
+
     factor = 1.1  # V_circ(R_50) := factor * sigma(R_50)
+
+    '''
+    plt.figure()
+    js[bt<bt_spirals] = 10.**mass_size_ltg(mstar[bt<bt_spirals]) * vstar_TF(log10(mstar[bt<bt_spirals]))
+    js[bt>bt_ells] = 10.**mass_size_etg(mstar[bt>bt_ells]) * 0.33 * factor * sstar_FJ(log10(mstar[bt>bt_ells]))
+    # js[bt>bt_ells] = 10.**mass_size_etg(mstar[bt>bt_ells]) * 0.33 * factor * sigma_MP(mstar[bt>bt_ells])
+    plt.plot(log10(mstar[bt<bt_spirals]), log10(js[bt<bt_spirals]), 'b.', alpha=0.1)
+    plt.plot(log10(mstar[bt>bt_ells]), log10(js[bt>bt_ells]), 'r.', alpha=0.1)
+    ms_rf12_discs_str = "11.06 9.84 9.23 10.46 11.31 11.50 11.34 10.13 11.42 10.62 10.61 10.74 11.03 11.31 10.93 11.32 10.01 11.34 10.67 11.33 10.81 10.83 10.65 11.31 11.23 11.10 10.32 10.74 11.13 10.95 11.12 10.61 8.62 10.49 11.37 10.39 9.86 11.07 10.22 9.43 11.08 11.42 10.43 10.03 11.56 9.58 10.73 10.96 10.76 10.54 11.10 11.31 11.11 11.50 10.84 11.07 11.34 10.47 11.23 11.34 10.86 10.44 11.51 9.14 11.74 10.82 11.26"
+    jt_rf12_discs_str = "2230 2290 770 790 190 260 480 550 1480 1930 4270 4280 2070 2230 340 360 1810 2900 630 820 1360 1450 990 1090 1210 1720 2580 3370 2230 2280 3150 3380 470 500 2220 2300 580 760 1110 1300 1250 1430 1520 1620 1030 1210 1400 2020 2070 2190 1070 1180 460 480 900 1000 2100 2380 920 1070 1680 2190 550 600 120 120 990 1040 4250 4470 1320 1350 160 180 930 1070 550 610 580 610 2240 2410 1060 1850 370 400 300 320 2030 2380 130 140 1220 1460 790 850 180 360 260 330 1650 1740 2440 2620 1280 1590 1430 1560 1300 1650 590 1030 1450 1580 570 580 2050 2150 2540 2780 710 830 960 1040 2360 2890 70 190 7560 8380 2010 2090 3140 3350"
+    ms_rf12_ell_str = "10.97 11.94 10.52 11.13 9.79 10.68 11.34 10.75 11.05 11.26 11.66 10.18 9.97 10.35 10.79 10.76 10.55 11.33 10.26 11.04 10.24 10.95 10.50 10.96 10.09"
+    jt_rf12_ell_str = "1270 3640 400 240 25 70 2330 1040 3100 630 680 7 130 680 1000 610 240 3360 270 1150 240 1700 160 210 110"
+    ms_dvdb12_str = "9.484 9.631 9.784 9.941 10.103 10.270 10.442 10.618 10.796 10.979 11.164 11.352"
+    js_dvdb12_str = "2.417 2.482 2.550 2.621 2.697 2.779 2.868 2.960 3.050 3.154 3.261 3.391"
+    ms_rf12_discs = [float(s) for s in ms_rf12_discs_str.split()]
+    jt_rf12_discs = [float(s) for s in jt_rf12_discs_str.split()]
+    ms_rf12_ell = [float(s) for s in ms_rf12_ell_str.split()]
+    jt_rf12_ell = [float(s) for s in jt_rf12_ell_str.split()]
+    ms_dvdb12 = [float(s) for s in ms_dvdb12_str.split()]
+    js_dvdb12 = [float(s) for s in js_dvdb12_str.split()]
+    plt.plot(ms_rf12_discs, log10(jt_rf12_discs[::2]), 'bs')
+    plt.plot(ms_rf12_ell, log10(jt_rf12_ell), 'rs')
+    plt.plot(ms_dvdb12, js_dvdb12, 'k^', markersize=20)
+    plt.plot(linspace(9,12), 3.18+0.52*(linspace(9,12)-11.),'k--')
+    plt.xlabel(r"$\log\rm\,M_\ast/M_\odot$", fontsize=16)
+    plt.ylabel(r"$\log\rm\,j_\ast/km\,s^{-1}\,kpc$", fontsize=16)
+    # plt.savefig('invEx_Mstar-jstar_wRF12.png', bbox_inches='tight')
+
+    fig,ax = plt.subplots()
+    mhalo_bin, fj_bin, e_fj_bin = median_bins(log10(mhalo), log10(js / j_halo), bt<bt_spirals, 19)
+    plt.errorbar(mhalo_bin, fj_bin, yerr=e_fj_bin-fj_bin, fmt='o-', color='b')
+    # plt.plot(log10(mhalo[bt<bt_spirals]), log10(js/j_halo)[bt<bt_spirals], 'b.', alpha=0.1)
+    mhalo_bin, fj_bin, e_fj_bin = median_bins(log10(mhalo), log10(js / j_halo), bt>bt_ells, 17)
+    plt.errorbar(mhalo_bin, fj_bin, yerr=e_fj_bin-fj_bin, fmt='o-', color='r')
+    # plt.plot(log10(mhalo[bt>bt_ells]), log10(js/j_halo)[bt>bt_ells], 'r.', alpha=0.1)
+    # mhalo_bin, fj_bin, e_fj_bin = median_bins(log10(mhalo), log10(js / j_halo), bt>0, 19)
+    # plt.errorbar(mhalo_bin, fj_bin, yerr=e_fj_bin-fj_bin, fmt='--', color='k')
+    ax.set_xlabel(r"$\log\rm\,M_h/M_\odot$", fontsize=16)
+    ax.set_ylabel(r"$\log\rm\,f_j(M_h)\equiv j_\ast / j_h$", fontsize=16)
+    # plt.savefig('invEx_Mhalo-fj.png', bbox_inches='tight')
+    plt.show()
+    print (j[2])
+    '''
 
     # Re = jdisc / (vstar_TF(log10(mstar)))
     # Re[bt > 0.8] = jbulge[bt > 0.8] / (0.7 * vstar_TF(log10(mstar[bt > 0.8])))
@@ -377,6 +471,36 @@ def plot_angular_momentum_size_velocity():
     # fac_sis_nfw *= pow(lambda_halo_prime / 0.1, -0.0 + 2.71 * md + 0.0047 / lambda_halo_prime) * \
     #                (1-3.*md+5.2*md*md) * (1-0.019*cvir * 0.00025*cvir*cvir + 0.52 / cvir)
     Rd = 1. / sqrt(2.) * lambda_halo_prime * r200 * fac_sis_nfw
+
+    # Compute dark matter fractions assuming NFW profile and that Re=stellar half mass radius
+    rs = r200 / cvir
+    rho_0 = mhalo / rs**3 / 4. / pi / (log(1.+cvir)-cvir/(1.+cvir))
+    mh_re = 4. * pi * rho_0 * rs**3 * (log((rs+Re)/rs) - Re / (Re+rs))
+    fDM = mh_re / (mstar / 2. + mh_re)
+
+    w = bt < bt_spirals
+    Ms_nos = Mstar(0., mode='high', model='L12', no_scatter=True)
+    ms_scatter = (log10(mstar) - log10([Ms_nos(mh) for mh in mhalo])) # / log10([Ms_nos(mh) for mh in mhalo])
+    x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, w, 20, [68., 90.], bin_size=30)
+    fj_scatter = (log10(array(fj)) - interp(log10(mhalo), log10(mhalo_bin), log10(fj_bin))) # / \
+    #                     interp(log10(mhalo), log10(mhalo_bin), log10(fj_bin))
+
+    '''
+    corner_data = vstack([log10(mstar)[w], log10(mstar/mhalo)[w], log10(fj)[w], log10(fDM)[w], log10(Re)[w], log10(vc)[w],
+                          log10(jstar)[w], log10(j_halo)[w], ms_scatter[w], fj_scatter[w]]).T
+    print(corner_data.shape)
+    corner.corner(corner_data, labels=[r"$\rm\log\,M_\ast/M_\odot$", r"$\rm\log\,M_\ast/M_h$",
+                                       r"$\rm\log\,f_j$", r"$\rm \log\,f_{DM}$", r"$\rm\log\,R_e/kpc$",
+                                       r"$\rm\log\,v_c/km/s$",
+                                       r"$\rm \log\,j_\ast$", r"$\rm \log\,j_h$",
+                                       r"$\sigma_{\log M_\ast-\log M_h}$",
+                                       r"$\sigma_{\log f_j-\log M_h}$"],
+                  quantiles=[0.16, 0.5, 0.84], show_titles=True, title_kwargs={"fontsize": 12},
+                  range=[.99, .99, .99, .99, .99, .99, .99, .99, .95, .95],
+                  color='b')
+    plt.savefig("corner_plot.pdf", bbox_inches='tight')
+    print (j[2])
+    '''
 
     """
     HDF5 file output
@@ -411,7 +535,7 @@ def plot_angular_momentum_size_velocity():
 
     size_hist = 20
     sigs = [68., 90.]
-    save_plots = True
+    save_plots = False
 
     '''
     ----------- Mstar-Mhalo
@@ -511,8 +635,8 @@ def plot_angular_momentum_size_velocity():
         plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Greys'), alpha=0.75)
 
         # ------ Median relation
-        x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, bt<0, size_hist, sigs, bin_size=30)
-        # plt.errorbar(log10(mhalo_bin), log10(fj_bin), yerr=abs(log10(fj_bin)-log10(e_fj_bin)), c='k', fmt='o')
+        x, y, H, lev, mhalo_bin, fj_bin, e_fj_bin = bins_and_hist(mhalo, fj, bt<0, size_hist, sigs, bin_size=15)
+        plt.errorbar(log10(mhalo_bin), log10(fj_bin), yerr=abs(log10(fj_bin)-log10(e_fj_bin)), c='k', fmt='o')
 
         ax.set_xlim(10.5,13.5)
         ax2.set_xlim(10.5,13.5)
@@ -692,7 +816,7 @@ def plot_angular_momentum_size_velocity():
     '''
     fig = plt.figure()
     plt.ylabel(r"$\log\rm\,M_\ast/M_\odot$", fontsize=16)
-    plt.xlabel(r"$\log\rm\,V_{max}/km\,s^{-1}$", fontsize=16)
+    plt.xlabel(r"$\log\rm\,V_{rot}/km\,s^{-1}$", fontsize=16)
     plt.ylim(8, 11.5)
     plt.xlim(1.8, 2.5)
     ax = fig.add_subplot(111)
@@ -807,8 +931,6 @@ def plot_angular_momentum_size_velocity():
         # plt.errorbar(log10(mstar_bin), log10(Re_bin), yerr=abs(log10(Re_bin)-log10(e_Re_bin)), c='r', fmt='o')
         plt.contourf(x, y, log10(H).T, levels=append(lev, log10(H).max()), cmap=plt.get_cmap('Reds'), alpha=0.75)
 
-    mass_size_etg = lambda mass: -5.54061 + 0.56*log10(mass)
-    mass_size_ltg = lambda mass: -1. + 0.14*log10(mass) + 0.25 * log10(1. + mass/3.98e10)
     plt.plot(linspace(9, 11.75), mass_size_etg(logspace(9, 11.75)), 'r-', lw=2)
     plt.plot(linspace(9, 11.75), mass_size_ltg(logspace(9, 11.75)), 'b--', lw=2)
 
